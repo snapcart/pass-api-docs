@@ -1,0 +1,7 @@
+@startuml
+start
+:Generate **JWT** token based on user data;
+:Sign JWT token with **secret** key;
+:Exchange JWT token for **access token**;
+stop
+@enduml

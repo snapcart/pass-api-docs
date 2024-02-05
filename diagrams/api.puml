@@ -1,0 +1,49 @@
+@startuml
+
+'|Client|
+start
+
+repeat :Authorize to get access token;
+
+partition "**Coupon API**" {
+'    |Client|
+    if (See list of available coupons
+    //GET /user_external/coupons//) then (coupons exist)
+    else (no coupons)
+      stop
+    endif
+
+'    |Client|
+    :See coupon detail information
+    //GET /user_external/coupons{id}//;
+}
+
+partition "**Receipt API**" {
+'    |Client|
+    :Create draft receipt
+    //POST /user_external/receipts//;
+    
+'    |Client|
+    :Upload receipt image
+    //POST /user_external/receipts/{id}/images//;
+    
+'    |Client|
+    :Commit receipt
+    //PATCH /user_external/receipts/{id}/commit//;
+
+'    |PASS API|
+    :Start receipt processing]
+
+    if (Receipt item match with coupon?) then (yes)
+      :Generate reward for coupon;
+      :Cas out to user wallet;
+    endif
+
+    :Finish receipt processing]
+}
+
+'|Client|
+repeat while (Access token expired?) is (yes)
+
+stop
+@enduml
