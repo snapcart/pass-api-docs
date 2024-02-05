@@ -3,7 +3,7 @@ window.onload = function() {
 
   // the following lines will be replaced by docker/configurator, when it runs in a docker-container
   window.ui = SwaggerUIBundle({
-    url: "snapcart_external_user_api.yaml",
+    url: "openapi/snapcart_external_user_api.yaml",
     dom_id: '#swagger-ui',
     deepLinking: true,
     presets: [
