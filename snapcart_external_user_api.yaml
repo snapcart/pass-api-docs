@@ -1,0 +1,992 @@
+openapi: 3.0.0
+info:
+  title: Snapcart PASS API
+  version: 1.0.0
+servers:
+  - url: https://api-stag.snapcart.asia
+    description: Stage
+paths:
+  /auth/{provider}:
+    post:
+      summary: Generates access token for SNapcart External User API by JWT token
+      operationId: user_external_auth
+      tags:
+        - Auth
+      parameters:
+        - name: provider
+          in: path
+          description: Provider name
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: JWT token with user data
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: Access token for Snapcart External User API
+                required:
+                  - token
+              example:
+                token: q5MCduTui12Jaw3952lMUAuPDLDnaI71
+        '400':
+          description: Bad request or validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Error message
+                required:
+                  - error
+        '401':
+          description: Unauthorized
+  /user_external/receipts:
+    get:
+      summary: Get all receipts.
+      operationId: user_external_receipts
+      tags:
+        - Receipts
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/SortType'
+        - name: sort
+          in: query
+          description: Sort field.
+          required: false
+          schema:
+            type: string
+            enum:
+              - id
+              - createdAt
+            default: id
+        - name: filters[status][]
+          in: query
+          description: Filter by receipt status (sent, in_review, rejected, completed).
+          required: false
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/ReceiptStatus'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptCollectionViewModel'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      summary: Create draft receipt.
+      operationId: user_external_create
+      tags:
+        - Receipts
+      requestBody:
+        description: Receipt creation request body
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                longitude:
+                  type: number
+                  description: Longitude of the user's location.
+                  format: double
+                  minimum: -180.0
+                  maximum: 180.0
+                latitude:
+                  type: number
+                  description: Latitude of the user's location.
+                  format: double
+                  minimum: -90.0
+                  maximum: 90.0
+                purchase_decision_by:
+                  type: string
+                  description: Purchase decision made by the user.
+                  enum:
+                    - myself
+                    - spouse
+                    - parents
+                    - grandparents
+                    - sibling
+                    - uncle_aunt
+                    - not_in_household
+                    - children
+                    - employer
+              required:
+                - purchase_decision_by
+      responses:
+        '201':
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleReceiptViewModel'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '406':
+          $ref: '#/components/responses/NoAutobookCouponsError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /user_external/receipts/{id}:
+    get:
+      summary: Get a receipt by id.
+      operationId: user_external_get_receipt
+      tags:
+        - Receipts
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleReceiptViewModel'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /user_external/receipts/{id}/images:
+    post:
+      summary: Add a receipt image.
+      operationId: user_external_attach_image
+      tags:
+        - Receipts
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+              required:
+                - image
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleReceiptViewModel'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /user_external/receipts/{id}/commit:
+    patch:
+      summary: Send a receipt.
+      operationId: user_external_patch_commit
+      tags:
+        - Receipts
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SingleReceiptViewModel'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/AccessDeniedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /user_external/coupons:
+    get:
+      summary: Get all coupons.
+      operationId: user_external_coupons_get_coupons
+      tags:
+        - Coupons
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/SortType'
+        - name: sort
+          in: query
+          description: Sort field.
+          required: false
+          schema:
+            type: string
+            enum:
+              - id
+              - name
+              - start_date
+              - end_date
+            default: id
+        - name: longitude
+          in: query
+          description: Coordinates of the user's location.
+          required: false
+          schema:
+            type: string
+        - name: latitude
+          in: query
+          description: Coordinates of the user's location.
+          required: false
+          schema:
+            type: string
+        - name: filters[expiring_before]
+          in: query
+          description: Display coupons that will expire before the specified date.
+          required: false
+          schema:
+            type: string
+            format: date-time
+            example: '2024-01-30T12:00:00-05:00'
+      responses:
+        '200':
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coupon.Application.ViewModel.UserPanel.CouponCollectionViewModel'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /user_external/coupons/{id}:
+    get:
+      summary: Get coupon by id.
+      operationId: user_external_coupons_get_coupon
+      tags:
+        - Coupons
+      parameters:
+        - $ref: '#/components/parameters/CouponId'
+      responses:
+        '200':
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coupon.Application.ViewModel.UserPanel.CouponViewModel'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /user_external/receipts/{id}/coupons:
+    get:
+      summary: Get all coupons related to given receipt.
+      operationId: user_external_coupons_get_receipt_coupons
+      tags:
+        - Coupons
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      responses:
+        '200':
+          description: Returned when successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coupon.Application.ViewModel.UserPanel.CouponCollectionViewModel'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /user_external/utils/currencies/all:
+    get:
+      summary: Get all currencies
+      operationId: user_external_cget_currencies_all
+      tags:
+        - Utils
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/SortType'
+        - name: sort
+          in: query
+          description: Sorting field
+          required: false
+          schema:
+            type: string
+            default: id
+            enum:
+              - id
+              - name
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrencyCollection'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /user_external/utils/currencies/{id}:
+    get:
+      summary: Get currency by id
+      operationId: user_external_get_currencies
+      tags:
+        - Utils
+      parameters:
+        - name: id
+          in: path
+          description: The ID of the currency
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Currency'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+    UnauthorizedError:
+      description: Access token is missing or invalid
+      content:
+        application/json:
+          example:
+            code: "exception.unauthorized"
+            message: "Please log in to the apps to access it"
+            original_message: "A Token was not found in the TokenStorage."
+          schema:
+            $ref: '#/components/schemas/UnauthorizedError'
+    AccessDeniedError:
+      description: Access denied
+      content:
+        application/json:
+          example:
+            code: "exception.access_denied"
+            message: "You are not allowed to access this resource"
+            original_message: "Access Denied."
+          schema:
+            $ref: '#/components/schemas/AccessDeniedError'
+    NotFoundError:
+      description: Data not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NotFoundError'
+    NoAutobookCouponsError:
+      description: Snap will be rejected because no coupons available
+      content:
+        application/json:
+          example:
+            code: "exception.validation_failed"
+            message: "exception.cashback_receipt.no_autobook_coupons"
+            original_message: "exception.cashback_receipt.no_autobook_coupons"
+          schema:
+            $ref: '#/components/schemas/NoAutobookCouponsError'
+    InternalError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InternalError'
+  schemas:
+    ReceiptStatus:
+      type: string
+      description: Receipt status
+      enum:
+        - sent
+        - in_review
+        - rejected
+        - completed
+    ReceiptGlobalId:
+      type: object
+      description: 'object (GlobalId)'
+      properties: { }
+    ReceiptImageViewModel:
+      type: object
+      description: '@var ImageViewModel[]'
+      properties:
+        medium:
+          $ref: '#/components/schemas/ImageFile'
+      required:
+        - medium
+    ReceiptRewardViewModel:
+      type: object
+      description: '@var RewardViewModel[]'
+      properties:
+        currency:
+          type: integer
+        total:
+          type: number
+          description: '@var float'
+          format: float
+        source_type:
+          type: string
+          description: '@var string'
+        source_id:
+          type: integer
+        tag:
+          type: string
+          description: '@var string'
+      required:
+        - currency
+        - total
+        - source_type
+        - source_id
+        - tag
+    ReceiptBranchViewModel:
+      type: object
+      description: 'object (BranchViewModel)'
+      properties:
+        name:
+          type: string
+          description: '@var string'
+      required:
+        - name
+    ReceiptViewModel:
+      type: object
+      description: '@var ReceiptViewModel[]'
+      properties:
+        id:
+          type: integer
+        receipt_id:
+          $ref: '#/components/schemas/ReceiptGlobalId'
+        type:
+          type: string
+          description: string
+        status:
+          $ref: '#/components/schemas/ReceiptStatus'
+        sent_at:
+          type: string
+          description: 'DateTime'
+          format: date-time
+        reject_reason:
+          type: string
+          description: string
+        total_items:
+          type: integer
+          description: integer
+          format: int32
+        total_images:
+          type: integer
+          description: integer
+          format: int32
+        images:
+          type: array
+          description: '@var ImageViewModel[]'
+          items:
+            $ref: '#/components/schemas/ReceiptImageViewModel'
+        total_rewards:
+          type: array
+          description: '@var RewardViewModel[]'
+          items:
+            $ref: '#/components/schemas/ReceiptRewardViewModel'
+        branch:
+          $ref: '#/components/schemas/ReceiptBranchViewModel'
+        allow_complain:
+          type: boolean
+          description: boolean
+        purchase_time:
+          type: string
+          description: 'DateTime'
+          format: date-time
+        purchase_tag:
+          type: string
+          description: string
+        total_value:
+          type: number
+          description: float
+          format: float
+        seen:
+          type: boolean
+          description: boolean
+      required:
+        - id
+        - receipt_id
+        - type
+        - status
+        - total_images
+        - images
+        - total_rewards
+        - allow_complain
+        - total_value
+    ReceiptPaginationViewModel:
+      type: object
+      description: '@var PaginationViewModel'
+      properties:
+        total:
+          type: integer
+        current:
+          type: integer
+      required:
+        - total
+        - current
+    ReceiptStatisticViewModel:
+      type: object
+      description: '@var ReceiptStatisticViewModel'
+      properties:
+        sent:
+          type: integer
+        rejected:
+          type: integer
+        completed:
+          type: integer
+      required:
+        - sent
+        - rejected
+        - completed
+    ReceiptCollectionViewModel:
+      type: object
+      description: ''
+      properties:
+        receipts:
+          type: array
+          description: '@var ReceiptViewModel[]'
+          items:
+            $ref: '#/components/schemas/ReceiptViewModel'
+        pagination:
+          $ref: '#/components/schemas/ReceiptPaginationViewModel'
+        Statistics:
+          $ref: '#/components/schemas/ReceiptStatisticViewModel'
+      required:
+        - receipts
+        - pagination
+        - Statistics
+    SingleReceiptViewModel:
+      type: object
+      description: ''
+      properties:
+        receipt:
+          $ref: '#/components/schemas/ReceiptViewModel'
+      required:
+        - receipt
+    Coupon.Application.ViewModel.CouponRewardViewModel:
+      type: object
+      description: '@var CouponRewardViewModel'
+      properties:
+        currency:
+          description: Currency id
+          type: integer
+        value:
+          type: number
+          description: Currency value
+          format: float
+      required:
+        - currency
+        - value
+    Coupon.Application.ViewModel.UserPanel.UserCouponViewModel:
+      type: object
+      description: Coupon booking information
+      properties:
+        id:
+          type: integer
+          description: 'User Coupon ID'
+        booked_at:
+          type: string
+          description: 'Time when the coupon was booked'
+          format: date-time
+          example: '2024-01-30T20:11:14+07:00'
+        expires_at:
+          type: string
+          description: 'Time when the coupon expires'
+          format: date-time
+          example: '2024-01-31T20:11:14+07:00'
+        remaining_quantity:
+          type: integer
+          description: 'Remaining quantity of the booked coupon'
+      required:
+        - id
+        - booked_at
+        - expires_at
+        - remaining_quantity
+    Coupon.Application.ViewModel.UserPanel.CouponViewModel:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Coupon id
+          format: int32
+        name:
+          type: string
+          description: Coupon name
+        reward:
+          $ref: '#/components/schemas/Coupon.Application.ViewModel.CouponRewardViewModel'
+        start_date:
+          type: string
+          description: '@var \DateTime'
+          format: date-time
+        end_date:
+          type: string
+          description: '@var \DateTime'
+          format: date-time
+        minimum_items:
+          type: integer
+          description: '@var int'
+          format: int32
+        max_coupons_per_user:
+          type: integer
+          description: '@var int'
+          format: int32
+        remaining_quantity:
+          type: integer
+          description: '@var int'
+          format: int32
+        small_image:
+          $ref: '#/components/schemas/Image'
+        large_image:
+          $ref: '#/components/schemas/Image'
+        images:
+          type: array
+          description: '@var Image[]'
+          items:
+            $ref: '#/components/schemas/Image'
+        booking:
+          $ref: '#/components/schemas/Coupon.Application.ViewModel.UserPanel.UserCouponViewModel'
+        chains:
+          type: array
+          description: List of chains
+          items:
+            type: object
+            description: Chain
+            properties:
+              id:
+                type: string
+                description: Chain id
+                format: uuid
+              name:
+                type: string
+                description: Chain name
+            required:
+              - id
+              - name
+        featured:
+          type: boolean
+          description: '@var boolean'
+        how_to_earn:
+          type: string
+          description: '@var string'
+        product_details:
+          type: string
+          description: '@var string'
+        exclude_chains:
+          type: boolean
+          description: '@var boolean'
+        geo_coupon:
+          type: boolean
+          description: '@var boolean'
+      required:
+        - id
+        - name
+        - reward
+        - start_date
+        - end_date
+        - minimum_items
+        - max_coupons_per_user
+        - remaining_quantity
+        - small_image
+        - large_image
+        - images
+        - chains
+        - featured
+        - product_details
+        - exclude_chains
+    Coupon.Application.ViewModel.UserPanel.CouponCollectionViewModel:
+      type: object
+      description: ''
+      properties:
+        coupons:
+          type: array
+          description: List of coupons
+          items:
+            $ref: '#/components/schemas/Coupon.Application.ViewModel.UserPanel.CouponViewModel'
+      required:
+        - coupons
+    ImageFile:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: The unique identifier for the image.
+        url:
+          type: string
+          format: uri
+          description: The URL of the image.
+      required:
+        - id
+        - url
+    Image:
+      type: object
+      properties:
+        thumbnail:
+          $ref: '#/components/schemas/ImageFile'
+        original:
+          $ref: '#/components/schemas/ImageFile'
+    Currency:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: The unique identifier for the currency.
+        name:
+          type: string
+          description: The name of the currency.
+        color_code:
+          type: string
+          description: The color code associated with the currency.
+        image:
+          $ref: '#/components/schemas/Image'
+        fraction_digits:
+          type: integer
+          description: The number of fraction digits for the currency.
+        decimal_separator:
+          type: string
+          description: The decimal separator used for the currency.
+        group_separator:
+          type: string
+          description: The group separator used for the currency.
+        cashable:
+          type: boolean
+          description: Indicates whether the currency is cashable.
+      required:
+        - id
+        - name
+        - color_code
+        - image
+        - fraction_digits
+        - decimal_separator
+        - group_separator
+        - cashable
+    CurrencyCollection:
+      type: object
+      properties:
+        currencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Currency'
+      required:
+        - currencies
+    UnauthorizedError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: The error code associated with the unauthorized error.
+        message:
+          type: string
+          description: A user-friendly error message describing the unauthorized error.
+        original_message:
+          type: string
+          description: The original error message from the server.
+      required:
+        - code
+        - message
+        - original_message
+    ValidationError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: The error code associated with the bad request.
+        message:
+          type: string
+          description: A user-friendly error message describing the bad request.
+        original_message:
+          type: string
+          description: The original error message from the server.
+        extra:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+                description: The key associated with the validation error.
+              message:
+                type: string
+                description: A user-friendly error message for the validation error.
+              data:
+                description: Additional data associated with the validation error.
+                oneOf:
+                  - type: array
+                  - type: string
+          description: Additional details about the validation error.
+        violations:
+          type: object
+          description: Detailed information about the validation error.
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      required:
+        - code
+        - message
+        - original_message
+    AccessDeniedError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: The error code associated with the not found error.
+        message:
+          type: string
+          description: A user-friendly error message describing the not found error.
+        original_message:
+          type: string
+          description: The original error message from the server.
+      required:
+        - code
+        - message
+        - original_message
+    NotFoundError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: The error code associated with the not found error.
+        message:
+          type: string
+          description: A user-friendly error message describing the not found error.
+        original_message:
+          type: string
+          description: The original error message from the server.
+      required:
+        - code
+        - message
+        - original_message
+    NoAutobookCouponsError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: The error code associated with the not found error.
+        message:
+          type: string
+          description: A user-friendly error message describing the not found error.
+        original_message:
+          type: string
+          description: The original error message from the server.
+      required:
+        - code
+        - message
+        - original_message
+    InternalError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: The error code associated with the internal server error.
+        message:
+          type: string
+          description: A user-friendly error message describing the internal server error.
+        original_message:
+          type: string
+          description: The original error message from the server.
+      required:
+        - code
+        - message
+        - original_message
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: Page number for pagination
+      required: false
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    Limit:
+      name: limit
+      in: query
+      description: Number of items per page
+      required: false
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+        maximum: 100
+    SortType:
+      name: sort_type
+      in: query
+      description: Sort direction.
+      required: false
+      schema:
+        type: string
+        default: desc
+        enum:
+          - asc
+          - desc
+    ReceiptId:
+      name: id
+      in: path
+      description: The ID of the receipt
+      required: true
+      schema:
+        type: integer
+    CouponId:
+      name: id
+      in: path
+      description: The ID of the coupon
+      required: true
+      schema:
+        type: integer
+
+security:
+  - bearerAuth: []
